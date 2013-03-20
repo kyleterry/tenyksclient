@@ -8,7 +8,7 @@ import redis
 
 import logging
 
-import tenyksclient.config as config
+from tenyksclient.config import settings
 
 gevent.monkey.patch_all()
 
@@ -43,9 +43,10 @@ class Client(object):
         gevent.spawn_later(recurring_delay, self.run_recurring)
 
     def run(self):
-        r = redis.Redis(**config.REDIS_CONNECTION)
+        r = redis.Redis(host=settings.redis_host, port=settings.redis_port,
+                db=settings.redis_db, password=settings.redis_password)
         pubsub = r.pubsub()
-        pubsub.subscribe(config.BROADCAST_TO_SERVICES_CHANNEL)
+        pubsub.subscribe(settings.client_broadcast_to)
         for raw_redis_message in pubsub.listen():
             try:
                 if raw_redis_message['data'] != 1L:
@@ -82,8 +83,9 @@ class Client(object):
                                   'Client subclasses.')
 
     def send(self, message, data=None):
-        r = redis.Redis(**config.REDIS_CONNECTION)
-        broadcast_channel = config.BROADCAST_TO_ROBOT_CHANNEL
+        r = redis.Redis(host=settings.redis_host, port=settings.redis_port,
+                db=settings.redis_db, password=settings.redis_password)
+        broadcast_channel = settings.tenyks_broadcast_to
         if data:
             to_publish = json.dumps({
                 'version': 1,
