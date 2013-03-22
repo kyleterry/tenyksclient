@@ -43,8 +43,10 @@ class Client(object):
         gevent.spawn_later(recurring_delay, self.run_recurring)
 
     def run(self):
-        r = redis.Redis(host=settings.redis_host, port=settings.redis_port,
-                db=settings.redis_db, password=settings.redis_password)
+        r = redis.Redis(host=settings.redis_host,
+                        port=int(settings.redis_port),
+                        db=settings.redis_db,
+                        password=settings.redis_password)
         pubsub = r.pubsub()
         pubsub.subscribe(settings.client_broadcast_to)
         for raw_redis_message in pubsub.listen():
@@ -83,8 +85,10 @@ class Client(object):
                                   'Client subclasses.')
 
     def send(self, message, data=None):
-        r = redis.Redis(host=settings.redis_host, port=settings.redis_port,
-                db=settings.redis_db, password=settings.redis_password)
+        r = redis.Redis(host=settings.redis_host,
+                        port=int(settings.redis_port),
+                        db=settings.redis_db,
+                        password=settings.redis_password)
         broadcast_channel = settings.tenyks_broadcast_to
         if data:
             to_publish = json.dumps({

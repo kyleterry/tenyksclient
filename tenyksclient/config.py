@@ -3,8 +3,13 @@ import ConfigParser
 
 from clint import resources
 
+from tenyksclient.meta import meta
 
-resources.init('Tenyks', 'tenyksclient')
+client_name = 'tenyksclient'
+if hasattr(meta, 'client_name'):
+    client_name = meta.client_name
+
+resources.init('Tenyks', client_name)
 
 if os.path.exists(os.path.join(resources.site.path, 'config.ini')):
     config_file = resources.site.open('config.ini', 'r')
@@ -15,7 +20,7 @@ else:
         resources.user.write('config.ini', '')
         config_file = resources.user.open('config.ini', 'r')
 
-config = ConfigParser.ConfigParser()
+config = ConfigParser.ConfigParser(allow_no_value=True)
 config.readfp(config_file)
 
 if not config.has_section('tenyksclient'):
