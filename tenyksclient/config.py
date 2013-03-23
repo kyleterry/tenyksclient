@@ -23,8 +23,8 @@ else:
 config = ConfigParser.ConfigParser(allow_no_value=True)
 config.readfp(config_file)
 
-if not config.has_section('tenyksclient'):
-    config.add_section('tenyksclient')
+if not config.has_section(client_name):
+    config.add_section(client_name)
 
 config_defaults = {
     'redis_host': 'localhost',
@@ -82,24 +82,26 @@ class Settings(object):
                 return None
         return object.__getattribute__(self, key)
 
+
 settings = Settings()
 
 modified = False
 
 for key, value in config_defaults.iteritems():
-    if not config.has_option('tenyksclient', key):
+    if not config.has_option(client_name, key):
         modified = True
-        config.set('tenyksclient', key, value)
+        config.set(client_name, key, value)
         setattr(settings, key, value)
     else:
-        new_value = config.get('tenyksclient', key)
+        new_value = config.get(client_name, key)
         setattr(settings, key, new_value)
 
-for option in config.options('tenyksclient'):
+for option in config.options(client_name):
     if not option in config_defaults:
-        setattr(settings, option, config.get('tenyksclient', option))
+        setattr(settings, option, config.get(client_name, option))
 
 
 if modified:
     config_file = resources.user.open('config.ini', 'w')
     config.write(config_file)
+    resources.user.close('config.ini')

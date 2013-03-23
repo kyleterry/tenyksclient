@@ -18,21 +18,27 @@ CLIENT_SERVICE_STATUS_ONLINE = 1
 
 class Client(object):
 
-    message_filters = {}
+    irc_message_filters = {}
     name = None
     direct_only = False
 
     def __init__(self):
-        self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
+        self.channels = [settings.client_broadcast_to]
         if self.name is None:
             self.name = self.__class__.__name__.lower()
         else:
             self.name = self.name.lower()
         if self.message_filters:
             self.re_message_filters = {}
-            for name, regex in self.message_filters.iteritems():
-                self.re_message_filters[name] = re.compile(regex).match
+            for name, regexes in self.irc_message_filters.iteritems():
+                if not name in self.re_irc_message_filters:
+                    self.re_irc_message_filters[name] = []
+                if isinstance(regexes, basestring):
+                    regexes = [regexes]
+                for regex in regexes:
+                    self.re_irc_message_filters[name].append(
+                        re.compile(regex).match)
         if hasattr(self, 'recurring'):
             gevent.spawn(self.run_recurring)
         self.logger = logging.getLogger(self.name)
@@ -48,29 +54,28 @@ class Client(object):
                         db=settings.redis_db,
                         password=settings.redis_password)
         pubsub = r.pubsub()
-        pubsub.subscribe(settings.client_broadcast_to)
+        pubsub.subscribe(self.channels)
         for raw_redis_message in pubsub.listen():
             try:
                 if raw_redis_message['data'] != 1L:
                     data = json.loads(raw_redis_message['data'])
                     if self.direct_only and not data['direct']:
                         continue
-                    if self.message_filters:
+                    if self.irc_message_filters:
                         name, match = self.search_for_match(data['payload'])
                         if match:
                             self.delegate_to_handle_method(data, match, name)
                     else:
                         gevent.spawn(self.handle, data, None, None)
             except ValueError:
-                logger.info(
-                    '{name}.run: invalid JSON. Ignoring message.'.format(
-                        name=self.__class__.__name__))
+                self.logger.info('Invalid JSON. Ignoring message.')
 
     def search_for_match(self, message):
-        for name, regex in self.re_message_filters.iteritems():
-            match = regex(message)
-            if match:
-                return name, match
+        for name, regexes in self.re_irc_message_filters.iteritems():
+            for regex in regexes:
+                match = regex(message)
+                if match:
+                    return name, match
         return None, None
 
     def delegate_to_handle_method(self, data, match, name):
@@ -100,6 +105,13 @@ class Client(object):
                 'connection_name': data['connection_name']
             })
         r.publish(broadcast_channel, to_publish)
+
+
+class WebServiceClient(Client):
+
+    def __init__(self):
+        super(WebServiceClient, self).__init__()
+        self.web_input_queue = queue.Queue()
 
 
 def run_client(service_instance):
