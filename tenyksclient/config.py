@@ -104,4 +104,4 @@ for option in config.options(client_name):
 if modified:
     config_file = resources.user.open('config.ini', 'w')
     config.write(config_file)
-    resources.user.close('config.ini')
+    #resources.user.close('config.ini')

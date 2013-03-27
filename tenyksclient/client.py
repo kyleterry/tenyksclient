@@ -3,7 +3,6 @@ import re
 
 import gevent
 import gevent.monkey
-from gevent import queue
 import redis
 
 import logging
@@ -23,14 +22,13 @@ class Client(object):
     direct_only = False
 
     def __init__(self):
-        self.output_queue = queue.Queue()
         self.channels = [settings.client_broadcast_to]
         if self.name is None:
             self.name = self.__class__.__name__.lower()
         else:
             self.name = self.name.lower()
-        if self.message_filters:
-            self.re_message_filters = {}
+        if self.irc_message_filters:
+            self.re_irc_message_filters = {}
             for name, regexes in self.irc_message_filters.iteritems():
                 if not name in self.re_irc_message_filters:
                     self.re_irc_message_filters[name] = []
@@ -97,12 +95,11 @@ class Client(object):
         broadcast_channel = settings.tenyks_broadcast_to
         if data:
             to_publish = json.dumps({
-                'version': 1,
-                'type': 'privmsg',
+                'command': data['command'],
                 'client': self.name,
                 'payload': message,
-                'irc_channel': data['irc_channel'],
-                'connection_name': data['connection_name']
+                'target': data['target'],
+                'connection': data['connection']
             })
         r.publish(broadcast_channel, to_publish)
 
@@ -111,7 +108,11 @@ class WebServiceClient(Client):
 
     def __init__(self):
         super(WebServiceClient, self).__init__()
-        self.web_input_queue = queue.Queue()
+        self.channels.append('tenyks.services.from_ws')
+
+    def web_handle(self, data, match, filter_name):
+        raise NotImplementedError('`handle` needs to be implemented on all '
+                                  'Client subclasses.')
 
 
 def run_client(service_instance):
