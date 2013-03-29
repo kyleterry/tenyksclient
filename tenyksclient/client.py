@@ -1,15 +1,16 @@
+import gevent.monkey
+gevent.monkey.patch_all()
+
 import json
 import re
 
 import gevent
-import gevent.monkey
 import redis
 
 import logging
 
 from tenyksclient.config import settings
 
-gevent.monkey.patch_all()
 
 CLIENT_SERVICE_STATUS_OFFLINE = 0
 CLIENT_SERVICE_STATUS_ONLINE = 1
