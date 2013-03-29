@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.1.0'
+version = '0.1.21'
 
 setup(name='tenyksclient',
       version=version,
@@ -13,11 +13,12 @@ setup(name='tenyksclient',
       author='Kyle Terry',
       author_email='kyle@kyleterry.com',
       url='https://github.com/kyleterry/tenyksclient',
-      license='LICENSE',
+      license='https://raw.github.com/kyleterry/tenyksclient/master/LICENSE',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
       install_requires=[
+          'tenyks==0.1.21',
           'clint',
       ],
       entry_points="""
