@@ -9,11 +9,7 @@ import redis
 
 import logging
 
-from tenyksclient.config import settings
-
-
-CLIENT_SERVICE_STATUS_OFFLINE = 0
-CLIENT_SERVICE_STATUS_ONLINE = 1
+from tenyksclient.config import settings, collect_settings
 
 
 class Client(object):
@@ -22,12 +18,9 @@ class Client(object):
     name = None
     direct_only = False
 
-    def __init__(self):
-        self.channels = [settings.client_broadcast_to]
-        if self.name is None:
-            self.name = self.__class__.__name__.lower()
-        else:
-            self.name = self.name.lower()
+    def __init__(self, name):
+        self.channels = [settings.BROADCAST_TO_CLIENTS_CHANNEL]
+        self.name = name.lower().replace(' ', '')
         if self.irc_message_filters:
             self.re_irc_message_filters = {}
             for name, regexes in self.irc_message_filters.iteritems():
@@ -48,10 +41,7 @@ class Client(object):
         gevent.spawn_later(recurring_delay, self.run_recurring)
 
     def run(self):
-        r = redis.Redis(host=settings.redis_host,
-                        port=int(settings.redis_port),
-                        db=settings.redis_db,
-                        password=settings.redis_password)
+        r = redis.Redis(**settings.REDIS_CONNECTION)
         pubsub = r.pubsub()
         pubsub.subscribe(self.channels)
         for raw_redis_message in pubsub.listen():
@@ -89,11 +79,8 @@ class Client(object):
                                   'Client subclasses.')
 
     def send(self, message, data=None):
-        r = redis.Redis(host=settings.redis_host,
-                        port=int(settings.redis_port),
-                        db=settings.redis_db,
-                        password=settings.redis_password)
-        broadcast_channel = settings.tenyks_broadcast_to
+        r = redis.Redis(**settings.REDIS_CONNECTION)
+        broadcast_channel = settings.BROADCAST_TO_ROBOT_CHANNEL
         if data:
             to_publish = json.dumps({
                 'command': data['command'],
@@ -116,14 +103,11 @@ class WebServiceClient(Client):
                                   'Client subclasses.')
 
 
-def run_client(service_instance):
+def run_client(client_class):
+    collect_settings()
+    client_instance = client_class(settings.CLIENT_NAME)
     try:
-        service_instance.run()
+        client_instance.run()
     except KeyboardInterrupt:
-        logger = logging.getLogger(service_instance.name)
+        logger = logging.getLogger(client_instance.name)
         logger.info('exiting')
-    finally:
-        pass
-        #with open(service_instance.log_file, 'a+') as f:
-        #    f.write('Shutting down')
-        #service_instance.send_status_update(CLIENT_SERVICE_STATUS_OFFLINE)

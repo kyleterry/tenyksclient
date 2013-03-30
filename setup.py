@@ -21,7 +21,9 @@ setup(name='tenyksclient',
           'tenyks==0.1.21',
           'clint',
       ],
-      entry_points="""
-      # -*- Entry points: -*-
-      """,
-      )
+      entry_points={
+          'console_scripts': [
+              'tcmkconfig = tenyksclient.config:make_config'
+          ]
+      },
+)

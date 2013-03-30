@@ -1,39 +1,15 @@
 import os
-import ConfigParser
+from os.path import abspath, join, dirname
+import sys
+import logging
 
-from clint import resources
 
-from tenyksclient.meta import meta
+from tenyksclient.module_loader import make_module_from_file
 
-client_name = 'tenyksclient'
-if hasattr(meta, 'client_name'):
-    client_name = meta.client_name
+PROJECT_ROOT = abspath(dirname(__file__))
 
-resources.init('Tenyks', client_name)
-
-if os.path.exists(os.path.join(resources.site.path, 'config.ini')):
-    config_file = resources.site.open('config.ini', 'r')
-else:
-    try:
-        config_file = resources.user.open('config.ini', 'r')
-    except IOError:
-        resources.user.write('config.ini', '')
-        config_file = resources.user.open('config.ini', 'r')
-
-config = ConfigParser.ConfigParser(allow_no_value=True)
-config.readfp(config_file)
-
-if not config.has_section(client_name):
-    config.add_section(client_name)
-
-config_defaults = {
-    'redis_host': 'localhost',
-    'redis_port': '6379',
-    'redis_db': 0,
-    'redis_password': None,
-    'tenyks_broadcast_to': 'tenyks.robot.broadcast_to',
-    'client_broadcast_to': 'tenyks.services.broadcast_to',
-}
+class NotConfigured(Exception):
+    pass
 
 
 # taken from legit (https://github.com/kennethreitz/legit)
@@ -48,7 +24,6 @@ class Settings(object):
 
         self.__dict__ = self._singleton
 
-
     def __call__(self, *args, **kwargs):
         # new instance of class to call
         r = self.__class__()
@@ -62,17 +37,13 @@ class Settings(object):
 
         return r
 
-
     def __enter__(self):
         pass
 
-
     def __exit__(self, *args):
-
         # restore cached copy
         self.__dict__.update(self.__cache.copy())
         del self.__cache
-
 
     def __getattribute__(self, key):
         if key in object.__getattribute__(self, '__attrs__'):
@@ -85,23 +56,62 @@ class Settings(object):
 
 settings = Settings()
 
-modified = False
+def collect_settings(settings_path=None, client_name=None):
+    intrl_settings = None
+    if not len(sys.argv) > 1:
+        message = """
+You need to provide a settings module.
 
-for key, value in config_defaults.iteritems():
-    if not config.has_option(client_name, key):
-        modified = True
-        config.set(client_name, key, value)
-        setattr(settings, key, value)
-    else:
-        new_value = config.get(client_name, key)
-        setattr(settings, key, new_value)
+Use `tenyksclientmkconfig > /path/to/settings.py`
+        """.format(pr=PROJECT_ROOT)
+        raise NotConfigured(message)
+    intrl_settings = make_module_from_file('settings', sys.argv[1])
 
-for option in config.options(client_name):
-    if not option in config_defaults:
-        setattr(settings, option, config.get(client_name, option))
+    for sett in filter(lambda x: not x.startswith('__'), dir(intrl_settings)):
+        setattr(settings, sett, getattr(intrl_settings, sett))
 
+    if not hasattr(intrl_settings, 'WORKING_DIR'):
+        WORKING_DIR = getattr(intrl_settings, 'WORKING_DIRECTORY_PATH',
+                join(os.environ['HOME'], '.config', settings.CLIENT_NAME))
+        setattr(settings, 'WORKING_DIR', WORKING_DIR)
 
-if modified:
-    config_file = resources.user.open('config.ini', 'w')
-    config.write(config_file)
-    #resources.user.close('config.ini')
+    LOGGING_CONFIG = {
+        'version': 1,
+        'disable_existing_loggers': True,
+        'formatters': {
+            'color': {
+                'class': 'tenyks.logs.ColorFormatter',
+                'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+            },
+            'default': {
+                'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+            }
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'color'
+            },
+            'file': {
+                'level': 'INFO',
+                'class': 'logging.FileHandler',
+                'formatter': 'default',
+                'filename': join(WORKING_DIR, 'tenyks.log')
+            }
+        },
+        'loggers': {
+            settings.CLIENT_NAME: {
+                'handlers': ['console'],
+                'level': ('DEBUG' if settings.DEBUG else 'INFO'),
+                'propagate': True
+            },
+        }
+    }
+
+    logging.config.dictConfig(LOGGING_CONFIG)
+
+def make_config():
+    with open(join(PROJECT_ROOT, 'settings.py.dist'), 'r') as f:
+        for line in f.readlines():
+            print line,
