@@ -1,10 +1,10 @@
 import os
 from os.path import abspath, join, dirname
 import sys
-import logging
-
+import logging.config
 
 from tenyksclient.module_loader import make_module_from_file
+
 
 PROJECT_ROOT = abspath(dirname(__file__))
 
