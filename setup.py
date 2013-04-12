@@ -18,7 +18,7 @@ setup(name='tenyksclient',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-          'tenyks==0.1.23,
+          'tenyks==0.1.23',
           'clint',
       ],
       entry_points={
