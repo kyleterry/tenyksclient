@@ -8,6 +8,7 @@ from tenyksclient.module_loader import make_module_from_file
 
 PROJECT_ROOT = abspath(dirname(__file__))
 
+
 class NotConfigured(Exception):
     pass
 
@@ -67,6 +68,9 @@ Use `tenyksclientmkconfig > /path/to/settings.py`
         raise NotConfigured(message)
     intrl_settings = make_module_from_file('settings', sys.argv[1])
 
+    if client_name and not getattr(settings, 'CLIENT_NAME', None):
+        setattr(settings, 'CLIENT_NAME', client_name)
+
     for sett in filter(lambda x: not x.startswith('__'), dir(intrl_settings)):
         setattr(settings, sett, getattr(intrl_settings, sett))
 
@@ -75,39 +79,42 @@ Use `tenyksclientmkconfig > /path/to/settings.py`
                 join(os.environ['HOME'], '.config', settings.CLIENT_NAME))
         setattr(settings, 'WORKING_DIR', WORKING_DIR)
 
-    LOGGING_CONFIG = {
-        'version': 1,
-        'disable_existing_loggers': True,
-        'formatters': {
-            'color': {
-                'class': 'tenyks.logs.ColorFormatter',
-                'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+    if not hasattr(intrl_settings, 'LOGGING_CONFIG'):
+        intrl_settings.LOGGING_CONFIG = LOGGING_CONFIG = {
+            'version': 1,
+            'disable_existing_loggers': True,
+            'formatters': {
+                'color': {
+                    'class': 'tenyks.logs.ColorFormatter',
+                    'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+                },
+                'default': {
+                    'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+                }
             },
-            'default': {
-                'format': '%(asctime)s %(name)s:%(levelname)s %(message)s'
+            'handlers': {
+                'console': {
+                    'level': 'DEBUG',
+                    'class': 'logging.StreamHandler',
+                    'formatter': 'color'
+                },
+                'file': {
+                    'level': 'INFO',
+                    'class': 'logging.FileHandler',
+                    'formatter': 'default',
+                    'filename': join(WORKING_DIR, 'tenyks.log')
+                }
+            },
+            'loggers': {
+                settings.CLIENT_NAME: {
+                    'handlers': ['console'],
+                    'level': ('DEBUG' if settings.DEBUG else 'INFO'),
+                    'propagate': True
+                },
             }
-        },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-                'formatter': 'color'
-            },
-            'file': {
-                'level': 'INFO',
-                'class': 'logging.FileHandler',
-                'formatter': 'default',
-                'filename': join(WORKING_DIR, 'tenyks.log')
-            }
-        },
-        'loggers': {
-            settings.CLIENT_NAME: {
-                'handlers': ['console'],
-                'level': ('DEBUG' if settings.DEBUG else 'INFO'),
-                'propagate': True
-            },
         }
-    }
+
+    setattr(settings, 'LOGGING_CONFIG', intrl_settings.LOGGING_CONFIG)
 
     logging.config.dictConfig(LOGGING_CONFIG)
 

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.1.21.1'
+version = '0.1.23'
 
 setup(name='tenyksclient',
       version=version,
@@ -18,7 +18,7 @@ setup(name='tenyksclient',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-          'tenyks==0.1.21',
+          'tenyks==0.1.23,
           'clint',
       ],
       entry_points={
