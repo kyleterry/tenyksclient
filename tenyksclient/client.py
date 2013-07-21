@@ -48,11 +48,11 @@ class Client(object):
             try:
                 if raw_redis_message['data'] != 1L:
                     data = json.loads(raw_redis_message['data'])
-                    if self.direct_only and not data['direct']:
+                    if self.direct_only and not data.get('direct', None):
                         continue
                     if self.irc_message_filters:
                         name, match = self.search_for_match(data['payload'])
-                        if match:
+                        if match or self.pass_on_non_match:
                             self.delegate_to_handle_method(data, match, name)
                     else:
                         gevent.spawn(self.handle, data, None, None)
