@@ -50,7 +50,7 @@ class Client(object):
                     data = json.loads(raw_redis_message['data'])
                     if self.direct_only and not data.get('direct', None):
                         continue
-                    if self.irc_message_filters:
+                    if self.irc_message_filters and 'payload' in data:
                         name, match = self.search_for_match(data['payload'])
                         if match or (hasattr(self, 'pass_on_non_match') and self.pass_on_non_match):
                             self.delegate_to_handle_method(data, match, name)
