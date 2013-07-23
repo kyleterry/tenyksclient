@@ -52,7 +52,7 @@ class Client(object):
                         continue
                     if self.irc_message_filters:
                         name, match = self.search_for_match(data['payload'])
-                        if match or self.pass_on_non_match:
+                        if match or (hasattr(self, 'pass_on_non_match') and self.pass_on_non_match):
                             self.delegate_to_handle_method(data, match, name)
                     else:
                         gevent.spawn(self.handle, data, None, None)
