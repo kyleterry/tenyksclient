@@ -82,14 +82,13 @@ class Client(object):
         r = redis.Redis(**settings.REDIS_CONNECTION)
         broadcast_channel = settings.BROADCAST_TO_ROBOT_CHANNEL
         if data:
-            to_publish = json.dumps({
-                'command': data['command'],
-                'client': self.name,
-                'payload': message,
-                'target': data['target'],
-                'connection': data['connection']
-            })
-        r.publish(broadcast_channel, to_publish)
+            data['payload'] = message
+            data['full_message'] = message
+            data['client'] = self.name
+            to_publish = json.dumps(data)
+            r.publish(broadcast_channel, to_publish)
+        else:
+            self.logger.info('No data to send back provided.')
 
 
 class WebServiceClient(Client):
