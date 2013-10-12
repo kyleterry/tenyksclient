@@ -8,6 +8,7 @@ import gevent
 import redis
 
 import logging
+import warnings
 
 from tenyksclient.config import settings, collect_settings
 
@@ -103,6 +104,7 @@ class WebServiceClient(Client):
 
 
 def run_client(client_class):
+    warnings.warn("deprecated", DeprecationWarning)
     collect_settings()
     client_instance = client_class(settings.CLIENT_NAME)
     try:
